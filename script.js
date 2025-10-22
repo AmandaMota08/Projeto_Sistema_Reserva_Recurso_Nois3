@@ -173,6 +173,61 @@ const formPesquisa = document.getElementById('formPesquisa');
 const formSolicitar = document.getElementById('formSolicitar');
 const listaReservas = document.getElementById('listaReservas');
 
+/*=====================================================
+SPRINT 3 - Regras Novas
+======================================================= */
+
+//   Adiciona 1h ao hórario ""HH:MM" para fim padrão
+function adicionar1Hora(hhmm){
+    const [h,m]=(hhmm || '00:00').split(':').map(Number);
+    const d = new Date();
+    d.setHours(h,m,0,0);
+    d.setMinutes(d.getMinutes()+60);
+    return d.toTimeString().slice(0,5);
+}
+
+// Adicionar RN2 (detecção de comflitos)
+//Não há conflito, quando um termina antes do outro terminar
+function hConflito({recursold, data, horaInicio,horaFim}){
+    const existentes =repo.get(DB_KEYS.reservas).filter(r=>recursoId
+        ===recursoId && r.data ===data && r.status !== 'cancelada');
+        return existentes.some(r=>!(r.horaFim<=horaInicio || r.horaInicio>=horaFim));
+    
+}
+
+//Render a partir do banco (localStorage)
+function renderItemReservaPersistida(r,recursosMap=null){
+    if(!listaReservas) return;
+    const recursos =recursosMap || Object.fromEntries(repo.get(DB_KEYS.recursos).map(rr.id.nome))
+    const quando = `${r.data.split('-').reverse().join('/')} - ${r.horaInicio} - ${r.horaFim}`;
+   const li = document.createElement('li');
+
+   const simbolo = r.status === 'aprovada' ? 'ticado':r.status === 'cancelada' ? 'x':'ampulheta';
+   li.innerHTML = `
+   <span><strong>${recuros[r.recursoId] || r.recursoId}
+   <span>${simbolo} ${r.status.charAt(0).toUpperCase()+ r.status.slice(1)}</span>
+   `;
+   if(r.status === 'cancelada'){
+    li.setAttribute('aria-disable','true');
+}
+
+//cancelamente 'click para cancelar'
+li.addEventListener('click' ,()=>{
+    if(r.status ==='cancelada') return;
+
+    r.status = 'cancelada';
+
+    repo.updatadeById(DB_KEYS.reservas,r.id,()=>r);
+
+    li.lastElementChild.textContent = 'xis Cancelada';
+    li.setAttribute('aria-disabled','true');
+    mostrarToast('Reserva cancelada','warn');
+
+});
+listaReservas.appendChild(li);
+}
+
+
 //4.1 - LOGIN
 //Valida credenciais simples e define perfil simulado
 formLogin?.addEventListener('submit',(e)=>{
@@ -210,7 +265,7 @@ formPesquisa?.addEventListener('submit',(e)=>{
         return;
     }
 
-    ultimoFiltroPesquisa = {recurso, data, hora};
+    ultimoFiltroPesquisa = {recurso, data, hora}; //SPRINT 3 - guardar id
     const quando = new Date(`${data}T${hora}`).toLocaleString('pt-br');
     mostrarToast(`Disponível: ${recurso} em ${quando}`);
     location.hash = '#secSolicitar';
@@ -241,16 +296,33 @@ formSolicitar?.addEventListener('submit',(e)=>{
         mostrarToast('Descreva a justificativa','warn');
         return;
     }
+    //SPRINT 3: monta obejeto completo para persistência
+    const recursoId = Number(ultimoFiltroPesquisa.recuro);
+    const data = ultimoFiltroPesquisa.data;
+    const horaInicio = ultimoFiltroPesquisa.hora;
+    const horaFim = adicionar1Hora(horaInicio);
+
+
+    if(hConflito({recursoId,data,horaInicio,horaFim})){
+        mostrarToast("Conflito: jà existe reserva neste intervalo para este recurso", 'err');
+    }
 
     //RN4 - se login contém 'prof', aprova automaticamente
     const status = usuarioAtual.professor ?'aprovada':'pendente';
 
     const nova = {
-        ...ultimoFiltroPesquisa,
+        //...ultimoFiltroPesquisa,
+        //SPRINT 3
+        id: Date.now(),
+        recursoId,
+        usuarioId: usuarioAtual.login,
         justificativa,
         status,
-        autor:usuarioAtual.login
+        //autor:usuarioAtual.login
     };
+
+    repo.push(DB_KEYS.reservas,nova);//persistência
+    renderItemReservaPersistida(nova);//atualização da UI
 
     reservas.push(nova);
     renderItemReserva(nova);
