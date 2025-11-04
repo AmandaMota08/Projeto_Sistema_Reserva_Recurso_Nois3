@@ -1,16 +1,21 @@
-const {Sequelize} = require('sequelize');
+const {Sequelize, ForeignKeyConstraintError} = require('sequelize');
+const path = require('path');
+
+const dbPath = process.env.DB_PATH || path.join(__dirname,'..','database.sqlite');
 const sequelize = new Sequelize(
     {
         dialect: 'sqlite',
-        storage: process.env.DB_PATH || path.join(_dirname,'--','--','database.sqlite'),
+        storage:dbPath,
         logging: false
     });
-const Recurso = require ('./recurso.js');
-const Reserva = require ('./reserva.js');
+
+    //carregar models
+const Recurso = require ('./recurso.js')(sequelize);
+const Reserva = require ('./reserva.js')(sequelize);
 const { FOREIGNKEYS } = require('sequelize/lib/query-types');
 
 // Associações: um recurso tem muitas reservas
-Recurso.hasMany(Reserva,{as:'reservas',ForeignKey:'recursoId', onDelete: 'CASCADE'});
-Reserva.belongsTo(Recurso,{as:'recursos',ForeignKey: 'recursoId'});
+Recurso.hasMany(Reserva,{as:'reserva',foreignKey:'recursoId', onDelete: 'CASCADE'});
+Reserva.belongsTo(Recurso,{as:'recurso',foreignKey: 'recursoId'});
 
 module.exports = {sequelize,Recurso,Reserva};
