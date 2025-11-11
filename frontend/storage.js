@@ -86,6 +86,15 @@ function normalizarReservasAntigas() {
   if (mudou) repo.set(DB_KEYS.reservas, arr);
 }
 
+
+
+
+
+
+
+
+
+
 /** Mapa id->nome de recursos (evita ficar procurando a cada render) */
 function mapRecursos(){
   return Object.fromEntries(repo.get(DB_KEYS.recursos).map(r => [r.id, r.nome]));

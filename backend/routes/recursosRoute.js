@@ -6,3 +6,4 @@ router.get('/',recursoController.listarTodos);
 router.post('/',recursoController.criar);
 
 module.exports = router;
+
